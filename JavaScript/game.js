@@ -10,29 +10,22 @@ $(document).ready(function(){
 	var playlist_over = false;
 	var score = 0;
 	var time_left_song = 60;
-	var default_songtime_left = 60;
-	var time_left_game = 60;
-	var default_gametime_left = 60;
+	var default_songtime = 60;
 	var counter;
 	var song_number = 1;
+	var song_text = 'Roll the dice and guess the category!'
 	
-	//Updates the Score
-	function updateScore(){
-		$("#Score").text(score);
-	}
 	//Creates a timer
 	function timer(){		
-		time_left_game--;
-		$("#Circle_timer").val(time_left_game).trigger('change');
-
+		$("#Circle_timer").val(time_left_song).trigger('change');
 		time_left_song--;
-		if (time_left_song <= 0) {
-			timerGreen();
+		if (time_left_song < 0) {
+			timerRed();
 			clearInterval(counter);
 			fetch('/pause').catch(error => {console.log(error)});
 			return;
 		}
-		if (time_left_song <= 3 || time_left_game <= 3) {
+		if (time_left_song <= 10 ) {
 			shakeTimer();
 		}
 	}
@@ -51,6 +44,11 @@ $(document).ready(function(){
 		$("#Circle_timer").trigger('configure', {'fgColor': 'green'});
 		$("#Circle_timer").css('color', 'green');
 	}
+	//Turns timer red
+	function timerRed(){
+		$("#Circle_timer").trigger('configure', {'fgColor': '#b80000'});
+		$("#Circle_timer").css('color', '#b80000');
+	}
 	//Plays next song
 	function playNext(){
 		//Check if you are at end of playlist
@@ -64,32 +62,34 @@ $(document).ready(function(){
 			.then(e => e.json())
 			.then(data => {
 				$("#List").empty();
-				console.log(data);
-				$("#Head_text").addClass("hidden");
-				$("#Pause_div").addClass('hidden');
-				$("#Reveal_div").addClass('hidden');
-				$("#Timer_div").addClass('hidden');
-				$("#Score_div").addClass('hidden');
-				$("#Playlist_header").addClass('hidden');
-				$("#Hearts_div").addClass('hidden');
-				$("#Guess_response").addClass('hidden');
+				timerGreen();
 				current_track = data.name;
 				current_artist = data.artists.map((a) => a.name).join(', ');
 				current_album = data.album.name;
 				current_releasedate = data.album.release_date;
-				time_left_song = default_songtime_left;
-				time_left_game = default_gametime_left;
-				$("#Head_text").text("Which song do you think is playing?");
-				$("#Pause_div").removeClass('hidden');
-				$("#Reveal_div").removeClass('hidden');
-				$("#Circle_timer").knob({
-					'max': default_songtime_left,
-					'readOnly': true,
-					'fgColor': 'green'
-				});
-				$("#Circle_timer").value = 5;
-				$("#Timer_div").removeClass('hidden');
-				$("#Playlist_header").removeClass('hidden');
+				time_left_song = default_songtime;
+				startTimer();
+				$(".track_choices").prop("disabled", false);
+			}).catch(error => {console.log(error)});
+	}
+	//Plays previous song
+	function playPrevious(){
+		//Check if you are at the beginning of the playlist
+		if (song_number == 1) {
+			console.log('song number: ', song_number);
+		} else {
+			song_number--;
+		}
+		fetch('/play_previous')
+			.then(e => e.json())
+			.then(data => {
+				$("#List").empty();
+				timerGreen();
+				current_track = data.name;
+				current_artist = data.artists.map((a) => a.name).join(', ');
+				current_album = data.album.name;
+				current_releasedate = data.album.release_date;
+				time_left_song = default_songtime;
 				startTimer();
 				$(".track_choices").prop("disabled", false);
 			}).catch(error => {console.log(error)});
@@ -150,7 +150,7 @@ $(document).ready(function(){
 		getDevices();
 	});
 	//Reveal song info button
-	$("#Reveal_button").click(function(e){
+	$("body").on("click", "#Reveal_button", function(e){
 		e.preventDefault();
 		$("#List").empty();
 		$("#List").append('<li><a href="#" class="track_choices btn btn-success role=button">Title: ' + current_track + '</a></li>' );
@@ -206,7 +206,7 @@ $(document).ready(function(){
 				fetch('/play_playlist/' + device_id + '/' + playlist_uri)
 					.then(e => e.json())
 					.then(data => {
-						$("#Head_text").text("Which song do you think is playing?");
+						$("#Head_text").text(song_text);
 						current_track = data.name;
 						current_artist = data.artists.map((a) => a.name).join(', ');
 						current_album = data.album.name;
@@ -214,13 +214,12 @@ $(document).ready(function(){
 						$("#Pause_div").removeClass('hidden');
 						$("#Reveal_div").removeClass('hidden');
 						$("#Circle_timer").knob({
-							'max': default_songtime_left,
+							'max': default_songtime,
 							'readOnly': true,
 							'fgColor': 'green'
 						});
-						$("#Circle_timer").value = 5;
+						$("#Circle_timer").value = default_songtime;
 						$("#Timer_div").removeClass('hidden');
-						//$("#Score_div").removeClass('hidden');
 						$("#Playlist_header").removeClass('hidden');
 						startTimer();
 					}).catch(error => {console.log("Problem playing music: " + error)});
@@ -238,13 +237,13 @@ $(document).ready(function(){
 	$("#Previous_button").click(function(e){
 		e.preventDefault;
 		clearInterval(counter);
-		fetch('/play_previous').catch(error => {console.log(error)});
+		playPrevious();
 	});
 	//Next Button
 	$("#Next_button").click(function(e){
 		e.preventDefault;
 		clearInterval(counter);
-		fetch('/play_next').catch(error => {console.log(error)});
+		playNext();
 	});
 	//Resume Button
 	$("#Resume_button").click(function(e){
