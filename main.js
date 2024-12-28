@@ -1,5 +1,6 @@
 
 var express = require('express');
+require('dotenv').config();
 var app = express();
 
 //Load ejs
@@ -13,9 +14,9 @@ app.use(express.static(__dirname));
 var SpotifyWebApi = require('spotify-web-api-node');
 
 var spotifyApi = new SpotifyWebApi({
-  clientId: '###',
-  clientSecret: '###',
-  redirectUri: 'http://localhost:8080/callback'
+  clientId: process.env.SPOTIFY_CLIENT_ID,
+  clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+  redirectUri: process.env.SPOTIFY_REDIRECT_URI
 });
 
 var scopes = ['playlist-read-private', 'playlist-read-collaborative', 'user-modify-playback-state', 
@@ -176,11 +177,7 @@ app.get('/play_playlist/:device_id/:playlist_uri', function(req, res){
 									.then(function(data){
 										//Skips to a random point in the song so it's easier to identify
 										track_data = data.body.item;
-										if (track_data.duration_ms >= 45000) {
-											track_start = Math.floor(Math.random() * (track_data.duration_ms - 40000) + 15000);
-										} else {
-											track_start = 15000;
-										}
+										track_start = 0;
 										spotifyApi.seek(track_start)
 											.then(function(data){			
 												res.send(track_data);
@@ -216,11 +213,36 @@ app.get('/play_next', function(req, res){
 					.then(function(data){
 						//Skips a bit into the song so easier to identify
 						track_data = data.body.item;
-						if (track_data.duration_ms >= 45000) {
-							track_start = Math.floor(Math.random() * (track_data.duration_ms - 40000) + 15000);
-						} else {
-							track_start = 15000;
-						}
+						track_start = 0;
+						spotifyApi.seek(track_start).then(function(data){
+							res.send(track_data);
+						}, function(error){
+							console.log(error);
+						}).catch(error => {console.log(error)});
+					}, function(error){
+						console.log(error);
+					}).catch(error => {console.log(error)});
+			}, 200);
+		}, function(error){
+			console.log(error);
+		}).catch(error => {console.log(error)});
+
+});
+
+//Play previous song in game and Sends Track to Page
+app.get('/play_previous', function(req, res){
+
+	spotifyApi.skipToPrevious()
+		.then(function(data){
+			//Delays to Give Device Time to Change Song
+			setTimeout(function(data){
+				console.log("Skipped song");
+				//Gets name of current track and returns it to the game
+				spotifyApi.getMyCurrentPlayingTrack()
+					.then(function(data){
+						//Skips a bit into the song so easier to identify
+						track_data = data.body.item;
+						track_start = 0;
 						spotifyApi.seek(track_start).then(function(data){
 							res.send(track_data);
 						}, function(error){
@@ -254,5 +276,5 @@ app.get('/play', function(req, res){
 
 });
 
-const PORT = process.env.PORT || 8080;
-app.listen(PORT || 8080, () => console.log("Currently listening on " + PORT));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT || 3000, () => console.log("Currently listening on " + PORT));

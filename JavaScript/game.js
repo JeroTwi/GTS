@@ -4,50 +4,32 @@ $(document).ready(function(){
 	var playlist_id;
 	var playlist_tracks;
 	var current_track;
+	var current_artist;
+	var current_album;
+	var current_releasedate;
 	var playlist_over = false;
 	var score = 0;
-	var time_left_song = 10;
+	var time_left_song = 60;
+	var default_songtime_left = 60;
 	var time_left_game = 60;
+	var default_gametime_left = 60;
 	var counter;
 	var song_number = 1;
-	//Keeps track of game mode: 0 = Time Challenge, 1 = Classic Mode
-	var game_mode = 0;
-	var lives = 3;
 	
 	//Updates the Score
 	function updateScore(){
 		$("#Score").text(score);
 	}
-	//Takes away a life
-	function loseLife(){
-		lives--;
-		$("#Hearts li:last-child").effect("shake", {times: 1, distance: 5}).fadeOut(function(){ 
-			$(this).remove(); 
-			if (lives <= 0) {
-				endGame();
-			}
-		});	
-	}
-	//Creates a 10 Second Timer
+	//Creates a timer
 	function timer(){		
 		time_left_game--;
 		$("#Circle_timer").val(time_left_game).trigger('change');
 
-		if (game_mode == 0) {
-			time_left_song--;
-			if (time_left_game < 0){
-				endGame();
-				return;
-			} 
-		} 
-		if ( (time_left_song <= 0 && game_mode == 0) || (time_left_game <=0 && game_mode == 1) ) {
-			setGuessResponse("Guess Faster!");
+		time_left_song--;
+		if (time_left_song <= 0) {
 			timerGreen();
-			if (game_mode == 1) {
-				loseLife();
-			}
 			clearInterval(counter);
-			playNext();
+			fetch('/pause').catch(error => {console.log(error)});
 			return;
 		}
 		if (time_left_song <= 3 || time_left_game <= 3) {
@@ -82,50 +64,35 @@ $(document).ready(function(){
 			.then(e => e.json())
 			.then(data => {
 				$("#List").empty();
+				console.log(data);
+				$("#Head_text").addClass("hidden");
+				$("#Pause_div").addClass('hidden');
+				$("#Reveal_div").addClass('hidden');
+				$("#Timer_div").addClass('hidden');
+				$("#Score_div").addClass('hidden');
+				$("#Playlist_header").addClass('hidden');
+				$("#Hearts_div").addClass('hidden');
+				$("#Guess_response").addClass('hidden');
 				current_track = data.name;
-				let chosenTracks = pickTracks();
-				chosenTracks.forEach(function(track){
-					$("#List").append('<li><a href="#" class="track_choices btn btn-success role=button">' 
-						+ track + '</a></li>' );
+				current_artist = data.artists.map((a) => a.name).join(', ');
+				current_album = data.album.name;
+				current_releasedate = data.album.release_date;
+				time_left_song = default_songtime_left;
+				time_left_game = default_gametime_left;
+				$("#Head_text").text("Which song do you think is playing?");
+				$("#Pause_div").removeClass('hidden');
+				$("#Reveal_div").removeClass('hidden');
+				$("#Circle_timer").knob({
+					'max': default_songtime_left,
+					'readOnly': true,
+					'fgColor': 'green'
 				});
-				time_left_song = 10;
-				if (game_mode == 1) {
-					time_left_game = 5;
-					$("#Circle_timer").val(time_left_game).trigger('change');
-				}
+				$("#Circle_timer").value = 5;
+				$("#Timer_div").removeClass('hidden');
+				$("#Playlist_header").removeClass('hidden');
 				startTimer();
 				$(".track_choices").prop("disabled", false);
 			}).catch(error => {console.log(error)});
-	}
-	//Picks The Song Options
-	function pickTracks(){
-		let chosenTracks = [];
-		//Randomly chooses the other options
-		for(i = 0; i < 3; i++){
-			let random = Math.floor(Math.random() * (playlist_tracks.length));
-			if(Math.floor(Math.random() * 4) == 3 && chosenTracks.indexOf(current_track) == -1){
-				chosenTracks.push(current_track);
-			}
-			if(chosenTracks.indexOf(playlist_tracks[random].track.name) == -1 
-					&& current_track !== playlist_tracks[random].track.name){
-				chosenTracks.push(playlist_tracks[random].track.name);
-			} else {
-				i--;
-			}
-		}
-		if(chosenTracks.indexOf(current_track) == -1){
-			chosenTracks.push(current_track);
-		}
-		return chosenTracks;
-	}
-	//Sets guess response
-	function setGuessResponse(text){
-		$("#Guess_response").text(text);
-		$("#Guess_response").fadeIn(function(){
-			setTimeout(function(){
-				$("#Guess_response").fadeOut();
-			}, 500);
-		});
 	}
 	//Gets user devices
 	function getDevices(){
@@ -155,31 +122,17 @@ $(document).ready(function(){
 		$("#List").empty();
 		$("#Head_text").addClass("hidden");
 		$("#Pause_div").addClass('hidden');
+		$("#Reveal_div").addClass('hidden');
 		$("#Timer_div").addClass('hidden');
 		$("#Score_div").addClass('hidden');
 		$("#Playlist_header").addClass('hidden');
 		$("#Hearts_div").addClass('hidden');
 		$("#Guess_response").addClass('hidden');
 		fetch('/pause').catch(error => {console.log(error)});
-		var opening_text = "Well Done! You really know your music!";
-		var score_text = "Your score was " + score;
-		//Changes text depending on score and game mode
-		if (game_mode == 1) {
-			if (score == 1){
-				score_text = "You knew " + score + " song";
-			} else {
-				score_text = "You knew " + score + " songs";
-			}
-			if (score < 10) {
-				opening_text = "Nice Try! You need to listen to some more music.";
-			}
-		} else if (game_mode == 0 && score < 100) {
-			opening_text = "Nice Try! You need to listen to some more music.";
-		}
 		if (playlist_over) {
-			opening_text = "Wow! You completed the playlist! You really know your stuff!";
+			opening_text = "";
+			$("#Game_over_text").html("Wow! You completed the playlist!<br/>" + opening_text + "</br>");
 		}
-		$("#Game_over_text").html("Game Over!<br/>" + opening_text + "</br>" + score_text);
 		$("#Game_over_div").removeClass('hidden');
 		$("#List").append('<li><a href="#" class="btn btn-success" id="Play_again" role="button">Play Again</a></li>');
 		$("#List").append('<li><a href="https://accounts.spotify.com/en/logout" '
@@ -195,6 +148,20 @@ $(document).ready(function(){
 		$("#Loading_text_div").removeClass('hidden');
 		$("#Spinner_div").removeClass('hidden');
 		getDevices();
+	});
+	//Reveal song info button
+	$("#Reveal_button").click(function(e){
+		e.preventDefault();
+		$("#List").empty();
+		$("#List").append('<li><a href="#" class="track_choices btn btn-success role=button">Title: ' + current_track + '</a></li>' );
+		$("#List").append('<li><a href="#" class="track_choices btn btn-success role=button">Artist: ' + current_artist + '</a></li>' );
+		$("#List").append('<li><a href="#" class="track_choices btn btn-success role=button">Album name: ' + current_album + '</a></li>' );
+		$("#List").append('<li><a href="#" class="track_choices btn btn-success role=button">Album release date: ' + current_releasedate + '</a></li>' );
+		$("#List").append('<a href="#" class="btn btn-outline-success" id="Hidereveal_button" data-toggle="modal" data-backdrop="static" data-keyboard="false">Hide</a>' );
+	});
+	//Hide song info button
+	$("body").on("click", "#Hidereveal_button", function(e){
+		$("#List").empty();
 	});
 	//Reload devices button
 	$("body").on("click", "#Reload_devices", function(e){
@@ -223,39 +190,14 @@ $(document).ready(function(){
 			}).catch(error => {alert("Problem loading playlists: " + error)});
 	});
 
+	//Load Playlist Tracks and Begin Game
 	$("body").on("click", ".playlistName", function(e){
 		$("#List").empty();
 		$("#Playlist_header").text("Playlist: " + $(this).text());
 		playlist_id = $(this).attr("data-id");
 		playlist_uri = $(this).attr("data-uri");
-		$("#Head_text").text("Which game mode would you like to play?");
-		//Adds the two game buttons
-		$("#List").append('<li><a href="#" class="gameMode btn btn-outline-success" data-html="true" id="Time_challenge"' 
-			+ ' role="button" data-mode="0" data-toggle="tooltip" data-placement="right" ' 
-			+ 'title="60 seconds</br>10 seconds per song ' 
-			+ '</br>The faster you answer the more points you will score</br>'
-			+ 'An incorrect answer will subtract 5 seconds"> Time Challenge </a></li>');
-		$("#List").append('<li><a href="#" class="gameMode btn btn-outline-success" id="Classic_mode" role="button"'
-			+ ' data-mode="1" data-toggle="tooltip" data-placement="left" data-html="true"'
-			+ ' title="3 lives</br>5 seconds per song</br>1 point per correct answer"> Classic Mode </a></li>');
-		//Enables tooltips
-		if (/Mobi|Android/i.test(navigator.userAgent)) {
-    		$("#Rules_div").removeClass('hidden');
-		} else {
-			$("body").tooltip({ selector: '[data-toggle="tooltip"]' });
-		}
-	});
-
-
-	//Load Playlist Tracks and Begin Game
-	$("body").on("click", ".gameMode", function(e){
-		$("#Rules_div").addClass('hidden');
-		$(".gameMode").tooltip('dispose');
 		$("#List").empty();
 		$("#Head_text").text("");
-		game_mode = $(this).attr("data-mode");
-		//Sets up clock for classic mode
-		if (game_mode == 1) {time_left_game = 5;}
 		//Load Playlist Tracks
 		fetch('/get_playlist_tracks/' + playlist_id)
 			.then(e => e.json())
@@ -266,60 +208,23 @@ $(document).ready(function(){
 					.then(data => {
 						$("#Head_text").text("Which song do you think is playing?");
 						current_track = data.name;
-						var chosenTracks = pickTracks();
-						//Creates button for each track choice
-						chosenTracks.forEach(function(track){
-							$("#List").append('<li><a href="#" class="track_choices btn btn-success role=button">' + track + '</a></li>' );
-						});
+						current_artist = data.artists.map((a) => a.name).join(', ');
+						current_album = data.album.name;
+						current_releasedate = data.album.release_date;
 						$("#Pause_div").removeClass('hidden');
+						$("#Reveal_div").removeClass('hidden');
 						$("#Circle_timer").knob({
-							'max': time_left_game,
+							'max': default_songtime_left,
 							'readOnly': true,
 							'fgColor': 'green'
 						});
 						$("#Circle_timer").value = 5;
 						$("#Timer_div").removeClass('hidden');
-						$("#Score_div").removeClass('hidden');
+						//$("#Score_div").removeClass('hidden');
 						$("#Playlist_header").removeClass('hidden');
-						if (game_mode == 1) {
-							$("#Hearts_div").removeClass('hidden');
-						}
-						updateScore();
 						startTimer();
 					}).catch(error => {console.log("Problem playing music: " + error)});
 			});
-	});
-
-	//Checks if answer was correct and updates score
-	$("body").on("click", ".track_choices", function(e){
-		//Stops multiple clicks
-		$(".track_choices").prop("disabled", true);
-		$("Guess_response").hide();
-		if ($(this).text() == current_track) {
-			setGuessResponse("CORRECT!");
-			timerGreen();
-			if (game_mode == 0) {
-				score += (time_left_song + 1);
-			} else {
-				score++;
-			}
-			updateScore();
-		} else {
-			setGuessResponse("Nice Try!");
-			if (game_mode == 0) {
-				shakeTimer();
-				time_left_game -= 5;
-				$("#Circle_timer").val(time_left_game).trigger('change');
-				setTimeout(function(){
-					timerGreen();
-				}, 400);
-			} else {
-				timerGreen();
-				loseLife();
-			}	
-		}
-		clearInterval(counter);
-		playNext();
 	});
 
 //Pause Menu Buttons
@@ -328,6 +233,18 @@ $(document).ready(function(){
 		e.preventDefault;
 		clearInterval(counter);
 		fetch('/pause').catch(error => {console.log(error)});
+	});
+	//Previous Button
+	$("#Previous_button").click(function(e){
+		e.preventDefault;
+		clearInterval(counter);
+		fetch('/play_previous').catch(error => {console.log(error)});
+	});
+	//Next Button
+	$("#Next_button").click(function(e){
+		e.preventDefault;
+		clearInterval(counter);
+		fetch('/play_next').catch(error => {console.log(error)});
 	});
 	//Resume Button
 	$("#Resume_button").click(function(e){

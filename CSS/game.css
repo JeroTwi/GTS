@@ -42,6 +42,33 @@
 	right: 1em;
 	margin-bottom: -1em;
 }
+#Reveal_button {
+	display: inline;
+	float: right;
+	position: relative;
+	top: -6em;
+	right: 1em;
+	margin-top: 20px;
+	margin-bottom: -1em;
+}
+#Next_button {
+	display: inline;
+	float: right;
+	position: relative;
+	top: -6em;
+	right: 1em;
+	margin-left: 5px;
+	margin-bottom: -1em;
+}
+#Previous_button {
+	display: inline;
+	float: right;
+	position: relative;
+	top: -6em;
+	right: 1em;
+	margin-right: 5px;
+	margin-bottom: -1em;
+}
 #Hearts {
 	list-style-type: none;
 	color: #b80000;
@@ -93,6 +120,17 @@
 	justify-content: center;
 }
 #List li {
+	text-align: center;
+	padding-bottom: .7em;
+	position: relative;
+	left: -1em;
+} 
+#RList {
+	width: 100%;
+	list-style-type: none;
+	justify-content: center;
+}
+#RList li {
 	text-align: center;
 	padding-bottom: .7em;
 	position: relative;
