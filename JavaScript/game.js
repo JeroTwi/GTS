@@ -8,7 +8,6 @@ $(document).ready(function(){
 	var current_album;
 	var current_releasedate;
 	var playlist_over = false;
-	var score = 0;
 	var time_left_song = 60;
 	var default_songtime = 60;
 	var counter;
@@ -58,19 +57,11 @@ $(document).ready(function(){
 		} else {
 			song_number++;
 		}
-		fetch('/play_next')
-			.then(e => e.json())
-			.then(data => {
-				$("#List").empty();
-				timerGreen();
-				current_track = data.name;
-				current_artist = data.artists.map((a) => a.name).join(', ');
-				current_album = data.album.name;
-				current_releasedate = data.album.release_date;
-				time_left_song = default_songtime;
-				startTimer();
-				$(".track_choices").prop("disabled", false);
-			}).catch(error => {console.log(error)});
+		fetch('/play_next').catch(error => {console.log(error)});
+		$("#List").empty();
+		timerGreen();
+		startTimer();
+		$(".track_choices").prop("disabled", false);
 	}
 	//Plays previous song
 	function playPrevious(){
@@ -80,19 +71,11 @@ $(document).ready(function(){
 		} else {
 			song_number--;
 		}
-		fetch('/play_previous')
-			.then(e => e.json())
-			.then(data => {
-				$("#List").empty();
-				timerGreen();
-				current_track = data.name;
-				current_artist = data.artists.map((a) => a.name).join(', ');
-				current_album = data.album.name;
-				current_releasedate = data.album.release_date;
-				time_left_song = default_songtime;
-				startTimer();
-				$(".track_choices").prop("disabled", false);
-			}).catch(error => {console.log(error)});
+		fetch('/play_previous').catch(error => {console.log(error)});
+		$("#List").empty();
+		timerGreen();
+		startTimer();
+		$(".track_choices").prop("disabled", false);
 	}
 	//Gets user devices
 	function getDevices(){
@@ -124,10 +107,8 @@ $(document).ready(function(){
 		$("#Pause_div").addClass('hidden');
 		$("#Reveal_div").addClass('hidden');
 		$("#Timer_div").addClass('hidden');
-		$("#Score_div").addClass('hidden');
 		$("#Playlist_header").addClass('hidden');
 		$("#Hearts_div").addClass('hidden');
-		$("#Guess_response").addClass('hidden');
 		fetch('/pause').catch(error => {console.log(error)});
 		if (playlist_over) {
 			opening_text = "";
@@ -149,10 +130,19 @@ $(document).ready(function(){
 		$("#Spinner_div").removeClass('hidden');
 		getDevices();
 	});
-	//Reveal song info button
+		//Reveal song info button
 	$("body").on("click", "#Reveal_button", function(e){
 		e.preventDefault();
 		$("#List").empty();
+		fetch('/get_currenttrack')
+		.then(e => e.json())
+		.then(data => {
+			current_track = data.name;
+			current_artist = data.artists.map((a) => a.name).join(', ');
+			current_album = data.album.name;
+			current_releasedate = data.album.release_date;
+			time_left_song = default_songtime;
+		}).catch(error => {console.log(error)});
 		$("#List").append('<li><a href="#" class="track_choices btn btn-success role=button">Title: ' + current_track + '</a></li>' );
 		$("#List").append('<li><a href="#" class="track_choices btn btn-success role=button">Artist: ' + current_artist + '</a></li>' );
 		$("#List").append('<li><a href="#" class="track_choices btn btn-success role=button">Album name: ' + current_album + '</a></li>' );
@@ -198,31 +188,24 @@ $(document).ready(function(){
 		playlist_uri = $(this).attr("data-uri");
 		$("#List").empty();
 		$("#Head_text").text("");
-		//Load Playlist Tracks
+		startTimer();
 		fetch('/get_playlist_tracks/' + playlist_id)
 			.then(e => e.json())
 			.then(data => {
+				//Load Playlist Tracks
+				$("#Head_text").text(song_text);
+				$("#Pause_div").removeClass('hidden');
+				$("#Reveal_div").removeClass('hidden');
+				$("#Circle_timer").knob({
+					'max': default_songtime,
+					'readOnly': true,
+					'fgColor': 'green'
+				});
+				$("#Circle_timer").value = default_songtime;
+				$("#Timer_div").removeClass('hidden');
+				$("#Playlist_header").removeClass('hidden');
 				playlist_tracks = data;
-				fetch('/play_playlist/' + device_id + '/' + playlist_uri)
-					.then(e => e.json())
-					.then(data => {
-						$("#Head_text").text(song_text);
-						current_track = data.name;
-						current_artist = data.artists.map((a) => a.name).join(', ');
-						current_album = data.album.name;
-						current_releasedate = data.album.release_date;
-						$("#Pause_div").removeClass('hidden');
-						$("#Reveal_div").removeClass('hidden');
-						$("#Circle_timer").knob({
-							'max': default_songtime,
-							'readOnly': true,
-							'fgColor': 'green'
-						});
-						$("#Circle_timer").value = default_songtime;
-						$("#Timer_div").removeClass('hidden');
-						$("#Playlist_header").removeClass('hidden');
-						startTimer();
-					}).catch(error => {console.log("Problem playing music: " + error)});
+				fetch('/play_playlist/' + device_id + '/' + playlist_uri).catch(error => {console.log(error)});
 			});
 	});
 
@@ -232,6 +215,12 @@ $(document).ready(function(){
 		e.preventDefault;
 		clearInterval(counter);
 		fetch('/pause').catch(error => {console.log(error)});
+	});
+	//Play Button
+	$("#Play_button").click(function(e){
+		e.preventDefault;
+		clearInterval(counter);
+		fetch('/play').catch(error => {console.log(error)});
 	});
 	//Previous Button
 	$("#Previous_button").click(function(e){
@@ -262,6 +251,5 @@ $(document).ready(function(){
 	$("body").on("click", "#Play_again", function(e){
 		page.reload();
 	});
-
 
 });

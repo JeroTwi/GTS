@@ -1,4 +1,3 @@
-
 var express = require('express');
 require('dotenv').config();
 var app = express();
@@ -39,7 +38,6 @@ app.get('/', function(req, res){
 });
 
 var tokenExpirationEpoch;
-
 //Redirect URI
 app.get('/callback', function(req, res){
 	
@@ -52,14 +50,10 @@ app.get('/callback', function(req, res){
 		    spotifyApi.setRefreshToken(data.body['refresh_token']);
 
 			//Save the amount of seconds until the access token expired
-		    tokenExpirationEpoch =
-		      new Date().getTime() / 1000 + data.body['expires_in'];
+		    tokenExpirationEpoch = new Date().getTime() / 1000 + data.body['expires_in'];
 		    console.log(
-		      'Retrieved token. It expires in ' +
-		        Math.floor(tokenExpirationEpoch - new Date().getTime() / 1000) +
-		        ' seconds!'
+		      'Retrieved token. It expires in ' + Math.floor(tokenExpirationEpoch - new Date().getTime() / 1000) + ' seconds!'
 		    );
-
 		    res.redirect('/game');
 		},
 		function(err) {
@@ -72,25 +66,22 @@ app.get('/callback', function(req, res){
 var numberOfTimesUpdated = 0;
 
 setInterval(function() {
-  //Stop printing and refresh.
-  if (++numberOfTimesUpdated > 5) {
-    clearInterval(this);
+//Stop printing and refresh.
+if (++numberOfTimesUpdated > 5) {
+	clearInterval(this);
 
-    //Refresh token and print the new time to expiration.
-    spotifyApi.refreshAccessToken().then(
-      function(data) {
-        tokenExpirationEpoch =
-          new Date().getTime() / 1000 + data.body['expires_in'];
-        console.log(
-          'Refreshed token. It now expires in ' +
-            Math.floor(tokenExpirationEpoch - new Date().getTime() / 1000) +
-            ' seconds!'
-        );
-      },
-      function(err) {
-        console.log('Could not refresh the token!', err.message);
-      }
-    );
+	//Refresh token and print the new time to expiration.
+	spotifyApi.refreshAccessToken().then(
+	function(data) {
+		tokenExpirationEpoch = new Date().getTime() / 1000 + data.body['expires_in'];
+		console.log(
+		'Refreshed token. It now expires in ' + Math.floor(tokenExpirationEpoch - new Date().getTime() / 1000) + ' seconds!'
+		);
+	},
+	function(err) {
+		console.log('Could not refresh the token!', err.message);
+	}
+	);
 }}, 1000);
 
 //Game Page
@@ -140,140 +131,93 @@ app.get('/get_user_playlists', function(req, res){
 
 var playlist_id;
 var track_data;
-var track_start;
 
 //Loads Playlists Tracks and Sends to Page
 app.get('/get_playlist_tracks/:playlist_id', function(req, res){
-
 	playlist_id = req.params.playlist_id;
-
 	spotifyApi.getPlaylistTracks(playlist_id, { fields: 'items' })
 		.then(function(data){
-			console.log("Track Data Sent");
+			console.log('This playlist contains tracks');
 			res.send(data.body.items);
 		}, function(err){
 			console.log('Something went wrong!', err);
 		}).catch(error => {console.log(error)});
-
 });
 
 //Play Selected Playlist on Selected Device and Sends Track to Page
 app.get('/play_playlist/:device_id/:playlist_uri', function(req, res){
-
 	spotifyApi.play({ device_id: req.params.device_id, context_uri: req.params.playlist_uri })
-		.then(function(data){
-			//Sets the playback to shuffle
-			spotifyApi.setShuffle({state: 'true'})
-				.then(function(data){
-					console.log("Shuffle Set");
-					//Skips to next song since it will always begin on first song in playlist
-					spotifyApi.skipToNext()
-						.then(function(data){
-							//Delays to Give Device Time to Change Song
-							setTimeout(function(data){
-								console.log("Skipped song");
-								//Gets name of current track and returns it to the game
-								spotifyApi.getMyCurrentPlayingTrack()
-									.then(function(data){
-										//Skips to a random point in the song so it's easier to identify
-										track_data = data.body.item;
-										track_start = 0;
-										spotifyApi.seek(track_start)
-											.then(function(data){			
-												res.send(track_data);
-											}, function(error){
-												console.log(error);
-											}).catch(error => {console.log(error)});
-									}, function(error){
-										console.log(error);	
-									}).catch(error => {console.log(error)});
-							}, 600);
-						}, function(error){
-							console.log(error);
-						}).catch(error => {console.log(error)});
-				}, function(err){
-					console.log(err)
-				}).catch(error => {console.log(error)});
-		}, function(err){
-			console.log(err);
-		}).catch(error => {console.log(error)});
+	.then(function() {
+		console.log('Playback started');
+		//Sets the playback to shuffle
+		spotifyApi.setShuffle(true)
+  		.then(function() {
+			console.log('Shuffle is on.');
+			//Skips to next song since it will always begin on first song in playlist
+			spotifyApi.skipToNext()
+  			.then(function() {
+    			console.log('Skip to next');
+  			}, function(err) {
+    			console.log('Something went wrong!', err);
+  			});
+		}, function  (err) {
+    		console.log('Something went wrong!', err);
+  		});
+	}, function(err) {
+	  console.log('Something went wrong!', err);
+	});
+});
 
+//Get current playing track
+app.get('/get_currenttrack', function(req, res){
+	spotifyApi.getMyCurrentPlayingTrack({ device_id: req.params.device_id, context_uri: req.params.playlist_uri })
+	.then(function(data) {
+		console.log('Now playing: ' + data.body.item.name);
+		track_data = data.body.item;
+		res.send(track_data);
+	}, function(err) {
+		console.log('Something went wrong!', err);
+	});
 });
 
 //Play next song in game and Sends Track to Page
 app.get('/play_next', function(req, res){
-
-	spotifyApi.skipToNext()
-		.then(function(data){
-			//Delays to Give Device Time to Change Song
-			setTimeout(function(data){
-				console.log("Skipped song");
-				//Gets name of current track and returns it to the game
-				spotifyApi.getMyCurrentPlayingTrack()
-					.then(function(data){
-						//Skips a bit into the song so easier to identify
-						track_data = data.body.item;
-						track_start = 0;
-						spotifyApi.seek(track_start).then(function(data){
-							res.send(track_data);
-						}, function(error){
-							console.log(error);
-						}).catch(error => {console.log(error)});
-					}, function(error){
-						console.log(error);
-					}).catch(error => {console.log(error)});
-			}, 200);
-		}, function(error){
-			console.log(error);
-		}).catch(error => {console.log(error)});
-
+	spotifyApi.skipToNext({ device_id: req.params.device_id, context_uri: req.params.playlist_uri })
+	.then(function() {
+		console.log('Skip to next');
+	}, function(err) {
+		console.log('Something went wrong!', err);
+	});
 });
 
 //Play previous song in game and Sends Track to Page
 app.get('/play_previous', function(req, res){
-
-	spotifyApi.skipToPrevious()
-		.then(function(data){
-			//Delays to Give Device Time to Change Song
-			setTimeout(function(data){
-				console.log("Skipped song");
-				//Gets name of current track and returns it to the game
-				spotifyApi.getMyCurrentPlayingTrack()
-					.then(function(data){
-						//Skips a bit into the song so easier to identify
-						track_data = data.body.item;
-						track_start = 0;
-						spotifyApi.seek(track_start).then(function(data){
-							res.send(track_data);
-						}, function(error){
-							console.log(error);
-						}).catch(error => {console.log(error)});
-					}, function(error){
-						console.log(error);
-					}).catch(error => {console.log(error)});
-			}, 200);
-		}, function(error){
-			console.log(error);
-		}).catch(error => {console.log(error)});
-
+	spotifyApi.skipToPrevious({ device_id: req.params.device_id, context_uri: req.params.playlist_uri })
+	.then(function() {
+		console.log('Skip to previous');
+	}, function(err) {
+		console.log('Something went wrong!', err);
+	});
 });
 
 //Pauses Music
 app.get('/pause', function(req, res){
-	
-	spotifyApi.pause()
-		.then(function(data){}, function(error){console.log(error)})
-		.catch(error => {console.log(error)});
-
+	spotifyApi.pause({ device_id: req.params.device_id, context_uri: req.params.playlist_uri })
+	.then(function() {
+	  console.log('Playback paused');
+	}, function(err) {
+	  console.log('Something went wrong!', err);
+	});
 });
 
 //Plays Music
 app.get('/play', function(req, res){
-
-	spotifyApi.play()
-		.then(function(data){}, function(error){console.log(error)})
-		.catch(error => {console.log(error)});
-
+	spotifyApi.play({ device_id: req.params.device_id, context_uri: req.params.playlist_uri })
+	.then(function() {
+	  console.log('Playback started');
+	}, function(err) {
+	  console.log('Something went wrong!', err);
+	});
 });
 
 const PORT = process.env.PORT || 3000;

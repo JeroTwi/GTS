@@ -11,18 +11,6 @@
 	margin-top: .3em;
 	margin-bottom: .5em;
 }
-#Guess_response {
-	text-align: left;
-	position: relative;
-	left: -3em;
-	top: 1em;
-	width: 100%;
-	display: none;
-}
-#Score_div p {
-	font-size: 2em;
-	color: green;
-}
 #Timer_div {
 	align-content: center;
 	justify-content: center;
@@ -40,6 +28,15 @@
 	position: relative;
 	top: -6em;
 	right: 1em;
+	margin-bottom: -1em;
+}
+#Play_button {
+	display: inline;
+	float: right;
+	position: relative;
+	top: -6em;
+	right: 1em;
+	margin-right: 5px;
 	margin-bottom: -1em;
 }
 #Reveal_button {
